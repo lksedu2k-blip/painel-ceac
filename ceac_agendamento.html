@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CEAC — Agendamento</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b1120; --surface: #111827; --surface2: #1a2236;
+      --accent: #3b82f6; --accent2: #60a5fa; --gold: #f59e0b;
+      --text: #f1f5f9; --muted: #94a3b8; --border: rgba(255,255,255,0.08);
+      --glow: rgba(59,130,246,0.18);
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh; display: flex;
+      align-items: flex-start; justify-content: center;
+      padding: 40px 16px 60px; overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% -10%, rgba(59,130,246,0.22) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(99,102,241,0.12) 0%, transparent 60%);
+      pointer-events: none; z-index: 0;
+    }
+    .container {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 480px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0;
+    }
+    .header {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 16px;
+      margin-bottom: 28px;
+      animation: fadeDown 0.6s ease both;
+    }
+    .avatar-wrap {
+      position: relative; width: 88px; height: 88px;
+    }
+    .avatar-wrap::before {
+      content: ''; position: absolute; inset: -3px;
+      border-radius: 50%;
+      background: conic-gradient(var(--accent), var(--accent2), var(--gold), var(--accent));
+      animation: spin 4s linear infinite;
+    }
+    .avatar-wrap::after {
+      content: ''; position: absolute; inset: 2px;
+      border-radius: 50%; background: var(--bg);
+    }
+    .avatar {
+      position: relative; z-index: 1;
+      width: 100%; height: 100%;
+      border-radius: 50%; object-fit: cover;
+    }
+    .avatar-fallback {
+      position: absolute; inset: 2px; z-index: 1;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1e3a5f, #1e40af);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 26px; font-weight: 800;
+      color: var(--accent2); letter-spacing: -1px;
+    }
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px; font-weight: 800;
+      letter-spacing: -0.5px; color: var(--text);
+    }
+
+    /* ── PRÓXIMO AGENDAMENTO ── */
+    .next-date {
+      background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.08));
+      border: 1px solid rgba(245,158,11,0.35);
+      border-radius: 16px; padding: 18px 24px;
+      text-align: center; width: 100%;
+      margin-bottom: 16px;
+      animation: fadeDown 0.6s 0.1s ease both;
+      position: relative; overflow: hidden;
+    }
+    .next-date::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    .next-date-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 6px; opacity: 0.85;
+    }
+    .next-date-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px; font-weight: 800;
+      color: #fcd34d; line-height: 1.2;
+    }
+    .next-date-weekday {
+      font-size: 13px; color: var(--gold);
+      opacity: 0.8; margin-top: 3px; font-weight: 500;
+    }
+    .next-date-time {
+      font-size: 12px; color: var(--gold);
+      opacity: 0.6; margin-top: 2px;
+    }
+
+    /* ── PRÓXIMOS DIAS ── */
+    .upcoming-section {
+      width: 100%; margin-bottom: 24px;
+      animation: fadeDown 0.6s 0.15s ease both;
+    }
+    .upcoming-title {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 10px;
+      padding-left: 2px;
+    }
+    .upcoming-list {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .upcoming-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 7px 13px;
+      font-size: 12px; font-weight: 500;
+      color: var(--muted);
+      display: flex; align-items: center; gap: 6px;
+      transition: border-color 0.2s;
+    }
+    .upcoming-chip:hover { border-color: rgba(59,130,246,0.3); }
+    .upcoming-chip .chip-dow {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: var(--accent2); opacity: 0.8;
+    }
+
+    /* ── LINKS ── */
+    .links { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+    .link-card {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 20px;
+      text-decoration: none; color: var(--text);
+      transition: all 0.22s ease;
+      position: relative; overflow: hidden;
+      animation: fadeUp 0.5s ease both;
+    }
+    .link-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, var(--glow), transparent);
+      opacity: 0; transition: opacity 0.22s;
+    }
+    .link-card:hover {
+      border-color: rgba(59,130,246,0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(59,130,246,0.2);
+    }
+    .link-card:hover::before { opacity: 1; }
+    .link-card:nth-child(1) { animation-delay: 0.2s; }
+    .link-card:nth-child(2) { animation-delay: 0.28s; }
+    .link-card:nth-child(3) { animation-delay: 0.36s; }
+    .link-card:nth-child(4) { animation-delay: 0.44s; }
+    .link-card:nth-child(5) { animation-delay: 0.52s; }
+    .link-card:nth-child(6) { animation-delay: 0.60s; }
+    .link-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 20px;
+    }
+    .link-icon.blue   { background: rgba(59,130,246,0.15); }
+    .link-icon.green  { background: rgba(34,197,94,0.15); }
+    .link-icon.purple { background: rgba(139,92,246,0.15); }
+    .link-icon.orange { background: rgba(249,115,22,0.15); }
+    .link-icon.teal   { background: rgba(20,184,166,0.15); }
+    .link-icon.red    { background: rgba(239,68,68,0.15); }
+    .link-text { flex: 1; min-width: 0; }
+    .link-title {
+      font-weight: 600; font-size: 14px;
+      line-height: 1.3; color: var(--text);
+    }
+    .link-desc {
+      font-size: 12px; color: var(--muted);
+      margin-top: 2px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .link-arrow {
+      color: var(--muted); font-size: 16px;
+      flex-shrink: 0; transition: transform 0.2s, color 0.2s;
+    }
+    .link-card:hover .link-arrow { color: var(--accent2); transform: translateX(3px); }
+
+    .footer {
+      margin-top: 36px; font-size: 12px;
+      color: var(--muted); opacity: 0.5;
+      text-align: center;
+      animation: fadeUp 0.5s 0.8s ease both;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header" id="siteHeader">
+    <div class="avatar-wrap" id="adminTrigger">
+      <img class="avatar" id="siteAvatar"
+        src="IMG_20260608_095120_533.png"
+        alt="CEAC"
+        onerror="this.style.display='none'; document.querySelector('.avatar-fallback').style.display='flex';" />
+      <div class="avatar-fallback" style="display:none;">CEAC</div>
+    </div>
+    <h1 id="siteTitle">CEAC</h1>
+  </div>
+
+  <div class="next-date">
+    <div class="next-date-label">📅 Próximo dia de agendamento</div>
+    <div class="next-date-value" id="nextDateVal">—</div>
+    <div class="next-date-weekday" id="nextDateWeekday"></div>
+    <div class="next-date-time">às 8h10 da manhã</div>
+  </div>
+
+  <div class="links" id="linksContainer">
+    <!-- Links will be rendered here -->
+  </div>
+
+  <div class="footer" id="siteFooter">CEAC - Brejo da Madre de Deus - 2026<br>desenvolvido por EduHard</div>
+  </div>
+  
+  <!-- Admin Panel (Hidden) -->
+<div id="adminPanel" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:1000; padding:20px; overflow-y:auto; font-family:sans-serif;">
+  <div style="max-width:500px; margin:0 auto; background:#1a2236; padding:20px; border-radius:12px; border:1px solid #3b82f6;">
+    <h2 style="color:#fff; margin-bottom:20px;">Painel Administrativo</h2>
+    
+    <div style="margin-bottom:15px;">
+      <label style="display:block; color:#94a3b8; font-size:12px; margin-bottom:5px;">Título do Site</label>
+      <input type="text" id="editTitle" style="width:100%; padding:10px; border-radius:6px; border:1px solid #2d3748; background:#0b1120; color:#fff;">
+    </div>
+
+    <div style="margin-bottom:15px;">
+      <label style="display:block; color:#94a3b8; font-size:12px; margin-bottom:5px;">URL do Avatar</label>
+      <input type="text" id="editAvatar" style="width:100%; padding:10px; border-radius:6px; border:1px solid #2d3748; background:#0b1120; color:#fff;">
+    </div>
+
+    <div style="margin-bottom:15px;">
+      <label style="display:block; color:#94a3b8; font-size:12px; margin-bottom:5px;">Rodapé</label>
+      <input type="text" id="editFooter" style="width:100%; padding:10px; border-radius:6px; border:1px solid #2d3748; background:#0b1120; color:#fff;">
+    </div>
+
+    <div style="margin-bottom:15px;">
+      <label style="display:block; color:#94a3b8; font-size:12px; margin-bottom:5px;">Gerenciar Datas (Desmarque para pular)</label>
+      <div id="skippedDatesCheckboxes" style="display:flex; flex-direction:column; gap:8px; background:#0b1120; padding:12px; border-radius:8px; border:1px solid #2d3748;">
+        <!-- Checkboxes will be generated here -->
+      </div>
+      <small style="color:#64748b; font-size:10px; margin-top:5px; display:block;">As datas desmarcadas serão ignoradas no site.</small>
+    </div>
+
+    <h3 style="color:#fff; margin:20px 0 10px; font-size:16px;">Links</h3>
+    <div id="editLinksContainer"></div>
+    
+    <button onclick="addNewLink()" style="width:100%; padding:10px; background:#10b981; color:#fff; border:none; border-radius:6px; cursor:pointer; margin-top:10px;">+ Adicionar Link</button>
+    
+    <div style="margin-top:30px; display:flex; gap:10px;">
+      <button onclick="saveAdminChanges()" style="flex:1; padding:12px; background:#3b82f6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">Salvar Alterações</button>
+      <button onclick="closeAdmin()" style="flex:1; padding:12px; background:#4b5563; color:#fff; border:none; border-radius:6px; cursor:pointer;">Cancelar</button>
+    </div>
+    
+    <div id="exportArea" style="display:none; margin-top:20px;">
+      <p style="color:#fcd34d; font-size:12px; margin-bottom:10px;">Alterações aplicadas! Para tornar permanente para todos, você deve baixar o arquivo atualizado e substituir o antigo no servidor.</p>
+      <button onclick="downloadUpdatedSite()" style="width:100%; padding:12px; background:#f59e0b; color:#000; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">Baixar Site Atualizado (.html)</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO DO SITE (Editável via Painel Admin)
+// ═══════════════════════════════════════════════════════════════
+let SITE_CONFIG = {
+  title: "CEAC",
+  avatarUrl: "IMG_20260608_095120_533.png",
+  footer: `CEAC - Brejo da Madre de Deus - ${new Date().getFullYear()}<br>desenvolvido por EduHard`,
+  skippedDates: [], // Datas puladas no formato YYYY-MM-DD
+  links: [
+    { title: "Agendamento Nova Identidade", desc: "Portal de Serviços do Estado de Pernambuco", url: "https://www.pe.gov.br/app/catalog/carta-de-servicos/obter-carteira-de-identidade-cin-1a-via-703", icon: "🪪", color: "blue" },
+    { title: "Aprenda Como Realizar o Agendamento", desc: "Passo a passo completo em vídeo", url: "https://youtu.be/Zurml2ywb0I", icon: "▶️", color: "red" },
+    { title: "Acompanhe Sua Identidade", desc: "Consulte o andamento do seu documento", url: "https://consultarg.iitb.pe.gov.br", icon: "🔍", color: "teal" },
+    { title: "Ainda com Dúvidas?", desc: "Deixe sua pergunta e receba resposta por e-mail", url: "https://forms.gle/eLkPZibCWLGEn1jZ7", icon: "❓", color: "purple" },
+    { title: "App PE.GOV — Android", desc: "Baixe na Google Play Store", url: "https://play.google.com/store/apps/details?id=br.gov.pe.ati.pegov&pcampaignid=web_share", icon: "🤖", color: "green" },
+    { title: "App PE.GOV — iPhone", desc: "Baixe na App Store", url: "https://apps.apple.com/br/app/pe-gov/id6745130084", icon: "🍎", color: "orange" }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════
+// LÓGICA DE AGENDAMENTO
+// ═══════════════════════════════════════════════════════════════
+const HOLIDAYS = new Set([
+  '2026-01-01', '2026-04-21', '2026-05-01', '2026-09-07', '2026-10-12', '2026-11-02', '2026-11-15', '2026-11-20', '2026-12-25',
+  '2026-02-16', '2026-02-17', '2026-04-03', '2026-03-06', '2026-03-19', '2026-06-24', '2026-05-26', '2026-06-20', '2026-06-04'
+]);
+
+const AGENDAMENTO_DAYS = new Set([0, 1, 2, 4]);
+const WEEKDAYS_LONG  = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+function toKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isAgendamentoDay(d) {
+  const key = toKey(d);
+  if (SITE_CONFIG.skippedDates && SITE_CONFIG.skippedDates.includes(key)) return false;
+  if (!AGENDAMENTO_DAYS.has(d.getDay())) return false;
+  const tomorrow = new Date(d);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return !HOLIDAYS.has(toKey(tomorrow));
+}
+
+function getNextAgendamento() {
+  const now = new Date();
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  // Horário de corte: 8h30 da manhã
+  const cutoff = new Date(today);
+  cutoff.setHours(8, 30, 0, 0);
+
+  // Se ainda for antes das 8h30, verificamos se hoje é um dia válido
+  if (now < cutoff) {
+    if (isAgendamentoDay(today)) return today;
+  }
+
+  // Caso contrário (ou se hoje não for válido), procuramos a partir de amanhã
+  const start = new Date(today);
+  start.setDate(start.getDate() + 1);
+  for (let i = 0; i < 400; i++) {
+    if (isAgendamentoDay(start)) return new Date(start);
+    start.setDate(start.getDate() + 1);
+  }
+  return null;
+}
+
+function formatDate(d) {
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDERIZAÇÃO DINÂMICA
+// ═══════════════════════════════════════════════════════════════
+function renderSite() {
+  document.getElementById('siteTitle').textContent = SITE_CONFIG.title;
+  document.getElementById('siteAvatar').src = SITE_CONFIG.avatarUrl;
+  document.getElementById('siteFooter').innerHTML = SITE_CONFIG.footer;
+  
+  const container = document.getElementById('linksContainer');
+  container.innerHTML = '';
+  
+  SITE_CONFIG.links.forEach((link, index) => {
+    const card = document.createElement('a');
+    card.className = 'link-card';
+    card.href = link.url;
+    card.target = '_blank';
+    card.rel = 'noopener';
+    card.style.animationDelay = `${0.2 + (index * 0.08)}s`;
+    
+    card.innerHTML = `
+      <div class="link-icon ${link.color || 'blue'}">${link.icon || '🔗'}</div>
+      <div class="link-text">
+        <div class="link-title">${link.title}</div>
+        <div class="link-desc">${link.desc}</div>
+      </div>
+      <div class="link-arrow">→</div>
+    `;
+    container.appendChild(card);
+  });
+
+  const next = getNextAgendamento();
+  if (next) {
+    document.getElementById('nextDateVal').textContent = formatDate(next);
+    document.getElementById('nextDateWeekday').textContent = WEEKDAYS_LONG[next.getDay()];
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAINEL ADMINISTRATIVO
+// ═══════════════════════════════════════════════════════════════
+let clickCount = 0;
+document.getElementById('adminTrigger').addEventListener('click', () => {
+  clickCount++;
+  if (clickCount >= 5) {
+    clickCount = 0;
+    const pass = prompt("Digite a senha de acesso:");
+    if (pass === "çççç") {
+      openAdmin();
+    } else if (pass !== null) {
+      alert("Senha incorreta!");
+    }
+  }
+  setTimeout(() => clickCount = 0, 2000);
+});
+
+function getPotentialDates(count) {
+  const result = [];
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  const cutoff = new Date(start);
+  cutoff.setHours(8, 30, 0, 0);
+
+  // Se já passou das 8h30, o primeiro dia potencial é amanhã
+  if (now >= cutoff) {
+    start.setDate(start.getDate() + 1);
+  }
+
+  const cur = new Date(start);
+  while (result.length < count) {
+    // Regra básica: dia de agendamento e amanhã não é feriado
+    if (AGENDAMENTO_DAYS.has(cur.getDay())) {
+      const tomorrow = new Date(cur);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      if (!HOLIDAYS.has(toKey(tomorrow))) {
+        result.push(new Date(cur));
+      }
+    }
+    cur.setDate(cur.getDate() + 1);
+    if (cur.getFullYear() > new Date().getFullYear() + 1) break;
+  }
+  return result;
+}
+
+function openAdmin() {
+  document.getElementById('editTitle').value = SITE_CONFIG.title;
+  document.getElementById('editAvatar').value = SITE_CONFIG.avatarUrl;
+  document.getElementById('editFooter').value = SITE_CONFIG.footer;
+  
+  // Gerar checkboxes para as próximas 5 datas potenciais
+  const container = document.getElementById('skippedDatesCheckboxes');
+  container.innerHTML = '';
+  const potentials = getPotentialDates(5);
+  const WEEKDAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  
+  potentials.forEach(date => {
+    const key = toKey(date);
+    const isSkipped = SITE_CONFIG.skippedDates && SITE_CONFIG.skippedDates.includes(key);
+    const div = document.createElement('div');
+    div.style.display = 'flex';
+    div.style.alignItems = 'center';
+    div.style.gap = '10px';
+    div.style.color = '#fff';
+    div.style.fontSize = '14px';
+    
+    div.innerHTML = `
+      <input type="checkbox" class="date-skip-check" value="${key}" ${!isSkipped ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
+      <span style="flex:1;">${WEEKDAYS_SHORT[date.getDay()]}, ${formatDate(date)}</span>
+      <span style="font-size:10px; color:${!isSkipped ? '#10b981' : '#ef4444'}">${!isSkipped ? 'DISPONÍVEL' : 'PULADA'}</span>
+    `;
+    container.appendChild(div);
+  });
+
+  renderEditLinks();
+  document.getElementById('adminPanel').style.display = 'block';
+  document.getElementById('exportArea').style.display = 'none';
+}
+
+function closeAdmin() {
+  document.getElementById('adminPanel').style.display = 'none';
+}
+
+function renderEditLinks() {
+  const container = document.getElementById('editLinksContainer');
+  container.innerHTML = '';
+  SITE_CONFIG.links.forEach((link, i) => {
+    const div = document.createElement('div');
+    div.style.background = '#0b1120';
+    div.style.padding = '10px';
+    div.style.borderRadius = '8px';
+    div.style.marginBottom = '10px';
+    div.style.border = '1px solid #2d3748';
+    div.innerHTML = `
+      <input type="text" placeholder="Título" value="${link.title}" onchange="updateLink(${i}, 'title', this.value)" style="width:100%; margin-bottom:5px; padding:5px; background:#1a2236; color:#fff; border:1px solid #333;">
+      <input type="text" placeholder="Descrição" value="${link.desc}" onchange="updateLink(${i}, 'desc', this.value)" style="width:100%; margin-bottom:5px; padding:5px; background:#1a2236; color:#fff; border:1px solid #333;">
+      <input type="text" placeholder="URL" value="${link.url}" onchange="updateLink(${i}, 'url', this.value)" style="width:100%; margin-bottom:5px; padding:5px; background:#1a2236; color:#fff; border:1px solid #333;">
+      <div style="display:flex; gap:5px;">
+        <input type="text" placeholder="Ícone (Emoji)" value="${link.icon}" onchange="updateLink(${i}, 'icon', this.value)" style="flex:1; padding:5px; background:#1a2236; color:#fff; border:1px solid #333;">
+        <select onchange="updateLink(${i}, 'color', this.value)" style="flex:1; padding:5px; background:#1a2236; color:#fff; border:1px solid #333;">
+          <option value="blue" ${link.color==='blue'?'selected':''}>Azul</option>
+          <option value="red" ${link.color==='red'?'selected':''}>Vermelho</option>
+          <option value="teal" ${link.color==='teal'?'selected':''}>Teal</option>
+          <option value="purple" ${link.color==='purple'?'selected':''}>Roxo</option>
+          <option value="green" ${link.color==='green'?'selected':''}>Verde</option>
+          <option value="orange" ${link.color==='orange'?'selected':''}>Laranja</option>
+        </select>
+        <button onclick="removeLink(${i})" style="background:#ef4444; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateLink(index, field, value) {
+  SITE_CONFIG.links[index][field] = value;
+}
+
+function addNewLink() {
+  SITE_CONFIG.links.push({ title: "Novo Link", desc: "Descrição aqui", url: "#", icon: "🔗", color: "blue" });
+  renderEditLinks();
+}
+
+function removeLink(index) {
+  SITE_CONFIG.links.splice(index, 1);
+  renderEditLinks();
+}
+
+function saveAdminChanges() {
+  SITE_CONFIG.title = document.getElementById('editTitle').value;
+  SITE_CONFIG.avatarUrl = document.getElementById('editAvatar').value;
+  SITE_CONFIG.footer = document.getElementById('editFooter').value;
+  
+  // Coletar datas desmarcadas para pular
+  const checkboxes = document.querySelectorAll('.date-skip-check');
+  SITE_CONFIG.skippedDates = [];
+  checkboxes.forEach(cb => {
+    if (!cb.checked) {
+      SITE_CONFIG.skippedDates.push(cb.value);
+    }
+  });
+  
+  renderSite();
+  document.getElementById('exportArea').style.display = 'block';
+}
+
+function downloadUpdatedSite() {
+  const currentHtml = document.documentElement.outerHTML;
+  // Atualiza o SITE_CONFIG hardcoded no HTML para o novo valor
+  const configString = `let SITE_CONFIG = ${JSON.stringify(SITE_CONFIG, null, 2)};`;
+  const updatedHtml = "<!DOCTYPE html>\n" + currentHtml.replace(/let SITE_CONFIG = \{[\s\S]*?\};/, configString);
+  
+  const blob = new Blob([updatedHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ceac_agendamento.html';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Inicializar
+renderSite();
+</script>
+
+<!-- Scripts do Firebase (Adicionados para Sincronização Automática) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO DO FIREBASE (Cole seus dados aqui quando encontrar)
+// ═══════════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB3ShaUEtLF0UhHuBFRrl4aqnQozuZDOsQ",
+  authDomain: "ceac-3c757.firebaseapp.com",
+  databaseURL: "https://ceac-3c757-default-rtdb.firebaseio.com",
+  projectId: "ceac-3c757",
+  storageBucket: "ceac-3c757.firebasestorage.app",
+  messagingSenderId: "1040581641545",
+  appId: "1:1040581641545:web:c1e84d8fa082f9b50bc698",
+  measurementId: "G-Y1W1WD7B6K"
+};
+
+if (FIREBASE_CONFIG) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+  const configRef = db.ref('site_config');
+
+  // Carregar dados automaticamente ao abrir o site
+  configRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      SITE_CONFIG = data;
+      renderSite();
+    }
+  });
+
+  // Sobrescrever a função de salvar para enviar ao Firebase
+  const originalSaveAdminChanges = saveAdminChanges;
+  saveAdminChanges = function() {
+    originalSaveAdminChanges(); // Executa a lógica local que já fizemos
+    configRef.set(SITE_CONFIG).then(() => {
+      alert("Alterações sincronizadas com a nuvem com sucesso!");
+    }).catch((error) => {
+      console.error("Erro ao sincronizar:", error);
+      alert("Erro ao salvar na nuvem. Verifique as regras do banco de dados.");
+    });
+  };
+}
+</script>
+</body>
+</html>
